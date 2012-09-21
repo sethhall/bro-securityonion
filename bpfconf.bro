@@ -44,9 +44,8 @@ event is_filter_done()
 		else
 			{
 			NOTICE([$note=InvalidFilter,
-			        $msg=fmt("Compiling packet filter from BPF.conf failed"),
+			        $msg=fmt("Compiling packet filter from %s failed", filename),
 			        $sub=filter]);
-			Reporter::error(fmt("Bad pcap filter from %s '%s'", filename, filter));
 			}
 
 		filter_parts=vector();

@@ -1,2 +1,3 @@
-@load ./config-bro
 @load ./bpfconf
+
+@load ./config-bro
