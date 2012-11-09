@@ -4,6 +4,7 @@
 
 @load base/frameworks/notice
 @load ./hostname
+@load ./interface
 
 module BPFConf;
 
@@ -86,9 +87,8 @@ function add_filter_file()
 	local real_filter_filename = BPFConf::filename;
 
 	# Support the interface template value.
-	local peer = get_event_peer()$descr;
-	if ( peer in Cluster::nodes && Cluster::nodes[peer]?$interface )
-		real_filter_filename = gsub(real_filter_filename, /\{\{interface\}\}/, Cluster::nodes[peer]$interface);
+	if ( SecurityOnion::interface != "" )
+		real_filter_filename = gsub(real_filter_filename, /\{\{interface\}\}/, SecurityOnion::interface);
 	
 	# Support the hostname template value.
 	if ( SecurityOnion::hostname != "" )
@@ -116,6 +116,10 @@ function add_filter_file()
 	}
 
 event SecurityOnion::found_hostname(hostname: string)
+	{
+	add_filter_file();
+	}
+event SecurityOnion::found_interface(inter: string)
 	{
 	add_filter_file();
 	}
