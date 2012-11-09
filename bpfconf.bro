@@ -3,12 +3,15 @@
 ##! hacks in it to work around bugs discovered in Bro.
 
 @load base/frameworks/notice
+@load ./hostname
 
 module BPFConf;
 
 export {
 	## The file that is watched on disk for BPF filter changes.
-	const filename = "/etc/nsm/rules/bpf.conf" &redef;
+	## Two templated variables are available; "hostname" and "interface".
+	## They can be used by surrounding the term by doubled curly braces.
+	const filename = "/etc/nsm/{{hostname}}-{{interface}}/bpf-bro.conf" &redef;
 
 	redef enum Notice::Type += { 
 		## Invalid filter notice.
@@ -17,6 +20,8 @@ export {
 }
 
 global filter_parts: vector of string = vector();
+
+global current_filter_filename = "";
 
 type FilterLine: record {
 	s: string;
@@ -75,11 +80,32 @@ event BPFConf::line(description: Input::EventDescription, tpe: Input::Event, s: 
 	schedule 2secs { is_filter_done() };
 	}
 
-event bro_init() &priority=5
+
+function add_filter_file()
 	{
-	if ( BPFConf::filename != "" )
+	local real_filter_filename = BPFConf::filename;
+
+	# Support the interface template value.
+	local peer = get_event_peer()$descr;
+	if ( peer in Cluster::nodes && Cluster::nodes[peer]?$interface )
+		real_filter_filename = gsub(real_filter_filename, /\{\{interface\}\}/, Cluster::nodes[peer]$interface);
+	
+	# Support the hostname template value.
+	if ( SecurityOnion::hostname != "" )
+		real_filter_filename = gsub(real_filter_filename, /\{\{hostname\}\}/, SecurityOnion::hostname);
+
+	if ( /\{\{/ in real_filter_filename )
 		{
-		Input::add_event([$source=BPFConf::filename,
+		Reporter::warning(fmt("Template value remaining in BPFConf filename: %s", real_filter_filename));
+		return;
+		}
+	else
+		Reporter::info(fmt("BPFConf filename set: %s", real_filter_filename));
+
+	if ( real_filter_filename != current_filter_filename )
+		{
+		current_filter_filename = real_filter_filename;
+		Input::add_event([$source=real_filter_filename,
 		                  $name="bpfconf",
 		                  $reader=Input::READER_RAW,
 		                  $mode=Input::REREAD,
@@ -87,4 +113,15 @@ event bro_init() &priority=5
 		                  $fields=FilterLine,
 		                  $ev=BPFConf::line]);
 		}
+	}
+
+event SecurityOnion::found_hostname(hostname: string)
+	{
+	add_filter_file();
+	}
+
+event bro_init() &priority=5
+	{
+	if ( BPFConf::filename != "" )
+		add_filter_file();
 	}
