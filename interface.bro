@@ -46,10 +46,7 @@ event bro_init() &priority=5
 	else
 		{
 		local tmpfile = "/tmp/bro-interface-" + unique_id("");
-		
-		system(fmt("grep \"interface\" ../bro.work8/aux/broctl/etc/node.cfg 2>/dev/null | grep -v \"^[[:blank:]]*#\" > %s", tmpfile));
-
-		#system(fmt("grep \"interface\" /opt/bro/etc/node.cfg 2>/dev/null | grep -v \"^[[:blank:]]*#\" > %s", tmpfile));
+		system(fmt("grep \"interface\" /opt/bro/etc/node.cfg 2>/dev/null | grep -v \"^[[:blank:]]*#\" > %s", tmpfile));
 		event add_interface_reader(tmpfile);
 		}
 	}
