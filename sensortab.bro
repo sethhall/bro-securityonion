@@ -21,12 +21,14 @@ export {
 
 event bro_init()
 	{
-	local peer = get_event_peer()$descr;
-	if ( peer in Cluster::nodes && Cluster::nodes[peer]?$interface )
+	if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER ) 
 		{
-		interface = Cluster::nodes[peer]$interface;
-		event SecurityOnion::found_interface(interface);
-		return;
+		local peer = get_event_peer()$descr;
+		if ( peer in Cluster::nodes && Cluster::nodes[peer]?$interface )
+			{
+			interface = Cluster::nodes[peer]$interface;
+			event SecurityOnion::found_interface(interface);
+			}
 		}
 	else
 		{
@@ -36,7 +38,7 @@ event bro_init()
 			local lines = split_all(nodefile, /\n/);
 			for ( i in lines )
 				{
-				if ( /^[[:blank:]]*#/ in lines[i])
+				if ( /^[[:blank:]]*#/ in lines[i] )
 					next;
 
 				local fields = split_all(lines[i], /[[:blank:]]*=[[:blank:]]*/);
