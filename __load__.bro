@@ -1,5 +1,4 @@
-@load ./hostname
-@load ./interface
+@load ./sensortab
 @load ./bpfconf
 @load ./add-interface-to-logs
 @load ./load-non-default-scripts

@@ -3,16 +3,15 @@
 ##! hacks in it to work around bugs discovered in Bro.
 
 @load base/frameworks/notice
-@load ./hostname
-@load ./interface
+@load ./sensortab
 
 module BPFConf;
 
 export {
 	## The file that is watched on disk for BPF filter changes.
-	## Two templated variables are available; "hostname" and "interface".
+	## Two templated variables are available; "sensorname" and "interface".
 	## They can be used by surrounding the term by doubled curly braces.
-	const filename = "/etc/nsm/{{hostname}}-{{interface}}/bpf-bro.conf" &redef;
+	const filename = "/etc/nsm/{{sensorname}}/bpf-bro.conf" &redef;
 
 	redef enum Notice::Type += { 
 		## Invalid filter notice.
@@ -21,28 +20,31 @@ export {
 }
 
 global filter_parts: vector of string = vector();
-
 global current_filter_filename = "";
 
 type FilterLine: record {
 	s: string;
 };
 
-global last_line = current_time();
-global ignore_lines_until = last_line;
-
 redef enum PcapFilterID += {
 	BPFConfPcapFilter,
 };
 
-
-event is_filter_done()
+event BPFConf::line(description: Input::EventDescription, tpe: Input::Event, s: string)
 	{
-	if ( |filter_parts| > 0 && current_time() - last_line > 5msec )
+	local part = sub(s, /[[:blank:]]*#.*$/, "");
+
+	# We don't want any blank parts.
+	if ( part != "" )
+		filter_parts[|filter_parts|] = part;
+	}
+
+event Input::end_of_data(name: string, source:string)
+	{
+	if ( name == "bpfconf" )
 		{
 		local filter = join_string_vec(filter_parts, " ");
 		capture_filters["bpf.conf"] = filter;
-		
 		if ( precompile_pcap_filter(BPFConfPcapFilter, filter) )
 			{
 			PacketFilter::install();
@@ -58,41 +60,18 @@ event is_filter_done()
 		}
 	}
 
-event BPFConf::line(description: Input::EventDescription, tpe: Input::Event, s: string)
-	{
-	last_line = current_time();
-	if ( last_line < ignore_lines_until )
-		return;
-
-	local part = sub(s, /[[:blank:]]*#.*$/, "");
-
-	# There is a bug in the input framework where it's reading the file twice the first time.
-	# If there is a duplicate line, this avoids rereading it.
-	if ( |filter_parts| > 0 && filter_parts[0] == part )
-		{
-		ignore_lines_until = last_line + 2secs;
-		return;
-		}
-	
-	# We don't want any blank parts.
-	if ( part != "" )
-		filter_parts[|filter_parts|] = part;
-
-	schedule 2secs { is_filter_done() };
-	}
-
 
 function add_filter_file()
 	{
 	local real_filter_filename = BPFConf::filename;
 
 	# Support the interface template value.
+	if ( SecurityOnion::sensorname != "" )
+		real_filter_filename = gsub(real_filter_filename, /\{\{sensorname\}\}/, SecurityOnion::sensorname);
+
+	# Support the interface template value.
 	if ( SecurityOnion::interface != "" )
 		real_filter_filename = gsub(real_filter_filename, /\{\{interface\}\}/, SecurityOnion::interface);
-	
-	# Support the hostname template value.
-	if ( SecurityOnion::hostname != "" )
-		real_filter_filename = gsub(real_filter_filename, /\{\{hostname\}\}/, SecurityOnion::hostname);
 
 	if ( /\{\{/ in real_filter_filename )
 		{
@@ -115,7 +94,7 @@ function add_filter_file()
 		}
 	}
 
-event SecurityOnion::found_hostname(hostname: string)
+event SecurityOnion::found_sensorname(name: string)
 	{
 	add_filter_file();
 	}

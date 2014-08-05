@@ -1,5 +1,4 @@
-@load ./hostname
-@load ./interface
+@load ./sensortab
 
 redef record Conn::Info += {
 	sensorname: string &log &optional;
@@ -7,7 +6,6 @@ redef record Conn::Info += {
 
 event connection_state_remove(c: connection)
 	{
-	local sensorname = cat(SecurityOnion::hostname, "-", SecurityOnion::interface);
-	c$conn$sensorname = sensorname;
+	c$conn$sensorname = SecurityOnion::sensorname;
 	}
 
