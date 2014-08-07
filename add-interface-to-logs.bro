@@ -10,9 +10,9 @@ event bro_init()
 	                            	{ 
 	                            	local peer = get_event_peer()$descr;
 	                            	if ( peer in Cluster::nodes && Cluster::nodes[peer]?$interface )
-	                            		return cat(path, "_", Cluster::nodes[peer]$interface);
+	                            		return cat("http_", Cluster::nodes[peer]$interface);
 	                            	else
-	                            		return path;
+	                            		return "http";
 	                            	}
 	                            ]);
 	}
