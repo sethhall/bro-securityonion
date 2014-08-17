@@ -17,23 +17,26 @@ export {
 
 	## Name of the sensor.
 	global sensorname = "";
+
+	## The filename where the sensortab is located.
+	const sensortab_file = "/opt/bro/etc/node.cfg" &redef;
 }
 
 event bro_init()
 	{
 	if ( Cluster::is_enabled() && Cluster::local_node_type() == Cluster::WORKER ) 
 		{
-		local peer = get_event_peer()$descr;
-		if ( peer in Cluster::nodes && Cluster::nodes[peer]?$interface )
+		local node = Cluster::node;
+		if ( node in Cluster::nodes && Cluster::nodes[node]?$interface )
 			{
-			interface = Cluster::nodes[peer]$interface;
+			interface = Cluster::nodes[node]$interface;
 			event SecurityOnion::found_interface(interface);
 			}
 		}
 	else
 		{
 		# If running in standalone mode...
-		when ( local nodefile = readfile("/opt/bro/etc/node.cfg") )
+		when ( local nodefile = readfile(sensortab_file) )
 			{
 			local lines = split_all(nodefile, /\n/);
 			for ( i in lines )

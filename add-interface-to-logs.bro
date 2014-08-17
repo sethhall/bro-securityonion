@@ -8,9 +8,9 @@ event bro_init()
 	Log::add_filter(HTTP::LOG, [$name = "http-interfaces",
 	                            $path_func(id: Log::ID, path: string, rec: HTTP::Info) = 
 	                            	{ 
-	                            	local peer = get_event_peer()$descr;
-	                            	if ( peer in Cluster::nodes && Cluster::nodes[peer]?$interface )
-	                            		return cat(path, "_", Cluster::nodes[peer]$interface);
+	                            	local node = Cluster::node;
+	                            	if ( node in Cluster::nodes && Cluster::nodes[node]?$interface )
+	                            		return cat(path, "_", Cluster::nodes[node]$interface);
 	                            	else
 	                            		return path;
 	                            	}
